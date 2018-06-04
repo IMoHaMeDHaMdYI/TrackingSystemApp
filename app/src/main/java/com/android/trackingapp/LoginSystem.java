@@ -39,4 +39,11 @@ public class LoginSystem extends AppCompatActivity {
         });
 
     }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Intent intent = new Intent(this,TrackingActivity.class);
+        startActivity(intent);
+    }
 }
