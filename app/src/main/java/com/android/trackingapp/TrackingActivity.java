@@ -2,17 +2,21 @@ package com.android.trackingapp;
 
 import android.*;
 import android.Manifest;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.MediaPlayer;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.android.trackingapp.directions.viewmodel.DirectionsViewModel;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -20,9 +24,12 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.maps.android.PolyUtil;
 
 public class TrackingActivity extends AppCompatActivity implements OnMapReadyCallback
-        , LocationListener , GoogleMap.OnMapClickListener {
+        , LocationListener, GoogleMap.OnMapClickListener {
 
 
     GoogleMap mMap;
@@ -30,6 +37,8 @@ public class TrackingActivity extends AppCompatActivity implements OnMapReadyCal
     private String locationProvider;
     private Location lastLocation;
     private Marker myLocationMarker, targetMarker;
+    DirectionsViewModel directionsViewModel;
+    private Polyline[] polylineArray;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,14 +57,14 @@ public class TrackingActivity extends AppCompatActivity implements OnMapReadyCal
                 this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(
-                        this,
+                this,
                 Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                     new String[]{
                             Manifest.permission.ACCESS_COARSE_LOCATION,
                             Manifest.permission.ACCESS_FINE_LOCATION
-                    },0);
+                    }, 0);
 
             return;
         }
@@ -67,15 +76,14 @@ public class TrackingActivity extends AppCompatActivity implements OnMapReadyCal
         mMap.getUiSettings().setZoomControlsEnabled(true);
         lastLocation = locationManager.getLastKnownLocation(locationProvider);
         mMap.setOnMapClickListener(this);
-
     }
 
     @Override
     public void onLocationChanged(Location location) {
-        Log.d("location","My location  " + location.getLatitude());
+        Log.d("location", "My location  " + location.getLatitude());
         lastLocation = location;
-        LatLng latlng = new LatLng(location.getLatitude(),location.getLongitude());
-        if(myLocationMarker !=null) myLocationMarker.remove();
+        LatLng latlng = new LatLng(location.getLatitude(), location.getLongitude());
+        if (myLocationMarker != null) myLocationMarker.remove();
         myLocationMarker = mMap.addMarker(
                 new MarkerOptions()
                         .position(latlng)
@@ -99,10 +107,10 @@ public class TrackingActivity extends AppCompatActivity implements OnMapReadyCal
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        switch (requestCode){
-            case 0 :
-                if(grantResults.length>0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+        switch (requestCode) {
+            case 0:
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     onMapReady(mMap);
                 }
         }
@@ -110,7 +118,7 @@ public class TrackingActivity extends AppCompatActivity implements OnMapReadyCal
 
     @Override
     public void onMapClick(LatLng latLng) {
-        if(targetMarker !=null)targetMarker.remove();
+        if (targetMarker != null) targetMarker.remove();
         targetMarker = mMap.addMarker(
                 new MarkerOptions()
                         .position(latLng)
@@ -118,6 +126,34 @@ public class TrackingActivity extends AppCompatActivity implements OnMapReadyCal
         Location targetLocation = new Location("");
         targetLocation.setLongitude(latLng.longitude);
         targetLocation.setLatitude(latLng.latitude);
-        Log.d("distance",lastLocation.distanceTo(targetLocation)+" meters away");
+        Log.d("distance", lastLocation.distanceTo(targetLocation) + " meters away");
+        directionsViewModel = ViewModelProviders.of(this).get(DirectionsViewModel.class);
+        directionsViewModel.getDirectionLiveData(lastLocation.getLatitude()
+                        + ","
+                        + lastLocation.getLongitude(), latLng.latitude + "," + latLng.longitude,
+                getString(R.string.api_key))
+                .observe(this, direction -> {
+                    directionsViewModel.getPoylineLiveData(direction).observe(this,
+                            polylines -> {
+                                if (polylineArray != null) {
+                                    for (Polyline polyline : polylineArray) {
+                                        polyline.remove();
+                                    }
+                                }
+                                if (polylines != null) {
+                                    polylineArray = new Polyline[polylines.length];
+                                    Log.d("reached here", "reached here");
+                                    for (int i=0;i<polylines.length;i++) {
+                                        PolylineOptions options = new PolylineOptions();
+                                        options.color(Color.RED);
+                                        options.width(10);
+                                        options.addAll(PolyUtil.decode(polylines[i]));
+                                        polylineArray[i] = mMap.addPolyline(options);
+
+                                    }
+                                }
+
+                            });
+                });
     }
 }
