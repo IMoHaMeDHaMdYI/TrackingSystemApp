@@ -2,6 +2,7 @@ package com.android.trackingapp;
 
 import android.*;
 import android.Manifest;
+import android.arch.lifecycle.ViewModelProvider;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -16,6 +17,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.android.trackingapp.di.Injectable;
 import com.android.trackingapp.directions.viewmodel.DirectionsViewModel;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -28,8 +30,10 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.maps.android.PolyUtil;
 
+import javax.inject.Inject;
+
 public class TrackingActivity extends AppCompatActivity implements OnMapReadyCallback
-        , LocationListener, GoogleMap.OnMapClickListener {
+        , LocationListener, GoogleMap.OnMapClickListener , Injectable {
 
 
     GoogleMap mMap;
@@ -39,6 +43,8 @@ public class TrackingActivity extends AppCompatActivity implements OnMapReadyCal
     private Marker myLocationMarker, targetMarker;
     DirectionsViewModel directionsViewModel;
     private Polyline[] polylineArray;
+    @Inject
+    ViewModelProvider.Factory viewModelFactory;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +53,7 @@ public class TrackingActivity extends AppCompatActivity implements OnMapReadyCal
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        directionsViewModel = ViewModelProviders.of(this,viewModelFactory).get(DirectionsViewModel.class);
     }
 
     @Override
@@ -126,8 +133,6 @@ public class TrackingActivity extends AppCompatActivity implements OnMapReadyCal
         Location targetLocation = new Location("");
         targetLocation.setLongitude(latLng.longitude);
         targetLocation.setLatitude(latLng.latitude);
-        Log.d("distance", lastLocation.distanceTo(targetLocation) + " meters away");
-        directionsViewModel = ViewModelProviders.of(this).get(DirectionsViewModel.class);
         directionsViewModel.getDirectionLiveData(lastLocation.getLatitude()
                         + ","
                         + lastLocation.getLongitude(), latLng.latitude + "," + latLng.longitude,

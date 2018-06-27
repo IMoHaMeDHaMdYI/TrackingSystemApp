@@ -9,6 +9,9 @@ import com.android.trackingapp.Client;
 import com.android.trackingapp.directions.model.Direction;
 import com.android.trackingapp.directions.model.Step;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -17,22 +20,16 @@ import retrofit2.Retrofit;
 /**
  * Created by MohamedHamdy on 6/5/2018.
  */
-
+@Singleton
 public class DirectionsRepository {
     private static DirectionsRepository directionsRepository;
     private DirectionServiceApi directionServiceApi;
     private String baseUrl = "https://maps.googleapis.com/maps/api/";
-    private DirectionsRepository(){
-        Retrofit client = Client.getInstance(baseUrl);
-        directionServiceApi = client.create(DirectionServiceApi.class);
+    @Inject
+    DirectionsRepository(DirectionServiceApi directionServiceApi){
+        this.directionServiceApi = directionServiceApi;
     }
 
-    public synchronized static DirectionsRepository getInstance(){
-        if(directionsRepository == null){
-            directionsRepository = new DirectionsRepository();
-        }
-        return directionsRepository;
-    }
     public LiveData<Direction> getDirectionsTo(String origin, String destination, String key){
         final MutableLiveData<Direction> data = new MutableLiveData<>();
         directionServiceApi.getDirectionTo(origin,destination,key)
